@@ -1,0 +1,92 @@
+<section class="slide-conclusion" data-slide-number="{{ slide_number }}"
+  style="
+    background: {{ tokens.colors.primary | default('#1e3a8a') }};
+    color: #ffffff;
+    padding: {{ tokens.spacing.slide_padding | default('60px') }};
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  ">
+
+  <!-- Top: Title -->
+  <div>
+    <h2 style="
+      font-family: '{{ tokens.fonts.heading | default('Inter') }}', sans-serif;
+      font-size: {{ tokens.typography.h2_size | default('1.8rem') }};
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 0.75rem;
+    ">{{ title | default('Conclusion') }}</h2>
+    <div style="width: 60px; height: 3px; background: rgba(255,255,255,0.5); border-radius: 2px;"></div>
+  </div>
+
+  <!-- Middle: Key takeaways -->
+  {% if bullets %}
+  <ul style="
+    list-style: none;
+    padding: 0; margin: 1.5rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: {{ tokens.spacing.bullet_gap | default('0.8em') }};
+    flex: 1;
+    justify-content: center;
+  ">
+    {% for bullet in bullets %}
+    <li style="
+      font-family: '{{ tokens.fonts.body | default('Inter') }}', sans-serif;
+      font-size: {{ tokens.typography.bullet_size | default('1.1rem') }};
+      color: rgba(255, 255, 255, 0.92);
+      padding-left: 1.75rem;
+      position: relative;
+      line-height: 1.5;
+    ">
+      <span style="
+        position: absolute; left: 0; top: 0.45em;
+        width: 8px; height: 8px;
+        background: rgba(255,255,255,0.7);
+        border-radius: 50%;
+      "></span>
+      {{ bullet }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <!-- Bottom bar: thank you / future work hint -->
+  <div style="
+    border-top: 1px solid rgba(255,255,255,0.25);
+    padding-top: 1.25rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  ">
+    <div>
+      {% if subtitle %}
+      <p style="
+        font-family: '{{ tokens.fonts.body | default('Inter') }}', sans-serif;
+        font-size: {{ tokens.typography.body_size | default('0.95rem') }};
+        color: rgba(255,255,255,0.7);
+        margin: 0;
+      ">{{ subtitle }}</p>
+      {% else %}
+      <p style="
+        font-family: '{{ tokens.fonts.body | default('Inter') }}', sans-serif;
+        font-size: {{ tokens.typography.body_size | default('0.95rem') }};
+        color: rgba(255,255,255,0.7);
+        margin: 0;
+      ">Thank you · Questions welcome</p>
+      {% endif %}
+    </div>
+    <div style="
+      width: 40px; height: 40px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+    ">✦</div>
+  </div>
+
+  <aside class="notes">{{ speaker_notes | default('') }}</aside>
+</section>

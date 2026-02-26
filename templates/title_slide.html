@@ -1,0 +1,69 @@
+<section class="slide-title" data-slide-number="{{ slide_number }}"
+  style="
+    background: {{ tokens.colors.background | default('#ffffff') }};
+    color: {{ tokens.colors.text | default('#1f2937') }};
+    padding: {{ tokens.spacing.slide_padding | default('60px') }};
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    height: 100%;
+    box-sizing: border-box;
+  ">
+
+  <div style="max-width: 900px; width: 100%;">
+
+    <!-- Coloured accent bar -->
+    <div style="
+      width: 80px; height: 5px;
+      background: {{ tokens.colors.primary | default('#1e3a8a') }};
+      margin: 0 auto 2rem auto;
+      border-radius: 3px;
+    "></div>
+
+    <!-- Main title -->
+    <h1 style="
+      font-family: '{{ tokens.fonts.heading | default('Inter') }}', sans-serif;
+      font-size: {{ tokens.typography.h1_size | default('2.4rem') }};
+      font-weight: 700;
+      color: {{ tokens.colors.primary | default('#1e3a8a') }};
+      line-height: 1.2;
+      margin-bottom: 1.5rem;
+    ">{{ title | default('Title') }}</h1>
+
+    <!-- Subtitle / authors / venue -->
+    {% if subtitle %}
+    <p style="
+      font-family: '{{ tokens.fonts.body | default('Inter') }}', sans-serif;
+      font-size: {{ tokens.typography.body_size | default('1.1rem') }};
+      color: {{ tokens.colors.muted | default('#6b7280') }};
+      margin-bottom: 0.5rem;
+    ">{{ subtitle }}</p>
+    {% endif %}
+
+    <!-- Extra bullets for venue/date if provided -->
+    {% if bullets %}
+    <div style="margin-top: 1.5rem;">
+      {% for item in bullets %}
+      <p style="
+        font-size: {{ tokens.typography.body_size | default('1rem') }};
+        color: {{ tokens.colors.muted | default('#6b7280') }};
+        margin: 0.25rem 0;
+      ">{{ item }}</p>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Bottom accent -->
+    <div style="
+      width: 40px; height: 3px;
+      background: {{ tokens.colors.secondary | default('#3b82f6') }};
+      margin: 2.5rem auto 0 auto;
+      border-radius: 3px;
+    "></div>
+
+  </div>
+
+  <aside class="notes">{{ speaker_notes | default('') }}</aside>
+</section>

@@ -1,0 +1,70 @@
+<section class="slide-equation" data-slide-number="{{ slide_number }}"
+  style="
+    background: {{ tokens.colors.background | default('#ffffff') }};
+    color: {{ tokens.colors.text | default('#1f2937') }};
+    padding: {{ tokens.spacing.slide_padding | default('60px') }};
+    height: 100%;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+  ">
+
+  <!-- Heading -->
+  <h2 style="
+    font-family: '{{ tokens.fonts.heading | default('Inter') }}', sans-serif;
+    font-size: {{ tokens.typography.h2_size | default('1.8rem') }};
+    font-weight: 700;
+    color: {{ tokens.colors.primary | default('#1e3a8a') }};
+    margin-bottom: 1.5rem;
+    border-bottom: 3px solid {{ tokens.colors.primary | default('#1e3a8a') }};
+    padding-bottom: 0.5rem;
+  ">{{ title | default('') }}</h2>
+
+  <!-- Equation display -->
+  {% if equation %}
+  <div style="
+    flex: 0 0 auto;
+    background: {{ tokens.colors.highlight | default('#f8fafc') }};
+    border: 1px solid {{ tokens.colors.muted | default('#e5e7eb') }};
+    border-left: 4px solid {{ tokens.colors.primary | default('#1e3a8a') }};
+    border-radius: 6px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 1.4rem;
+    overflow-x: auto;
+  ">
+    \[ {{ equation }} \]
+  </div>
+  {% endif %}
+
+  <!-- Explanation bullets -->
+  {% if bullets %}
+  <ul style="
+    list-style: none;
+    padding: 0; margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: {{ tokens.spacing.bullet_gap | default('0.6em') }};
+    flex: 1;
+  ">
+    {% for bullet in bullets %}
+    <li style="
+      font-family: '{{ tokens.fonts.body | default('Inter') }}', sans-serif;
+      font-size: {{ tokens.typography.bullet_size | default('1.05rem') }};
+      color: {{ tokens.colors.text | default('#1f2937') }};
+      padding-left: 1.5rem;
+      position: relative;
+      line-height: 1.5;
+    ">
+      <span style="position: absolute; left: 0; top: 0.45em; width: 8px; height: 8px; background: {{ tokens.colors.secondary | default('#3b82f6') }}; border-radius: 50%;"></span>
+      {{ bullet }}
+    </li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  <!-- MathJax is loaded by the Reveal.js scaffold in combine_presentation -->
+
+  <aside class="notes">{{ speaker_notes | default('') }}</aside>
+</section>
