@@ -1,0 +1,49 @@
+# SlideSynth Configuration
+# Copy this file to the project root and adjust as needed.
+# Environment variables override these values:
+#   SLIDESYNTH_MODEL_<ROLE>  (e.g. SLIDESYNTH_MODEL_ORCHESTRATOR)
+#   ANTHROPIC_API_KEY
+#   OPENAI_API_KEY
+
+models:
+  # Multi-step reasoning and pipeline coordination
+  orchestrator: "anthropic:claude-sonnet-4-5-20250929"
+  # Content analysis — benefits from long context and careful reasoning
+  research: "anthropic:claude-haiku-4-5-20251001"
+  # Slide planning — structured output, good instruction following
+  planner: "anthropic:claude-haiku-4-5-20251001"
+  # Design token generation — creative with guidelines
+  design: "anthropic:claude-haiku-4-5-20251001"
+  # HTML generation — precise, code-oriented
+  generator: "anthropic:claude-haiku-4-5-20251001"
+  # Plan verification — semantic scoring against source material
+  verifier: "anthropic:claude-haiku-4-5-20251001"
+  # ReAct editing loop — fast, iterative reasoning
+  editor: "anthropic:claude-haiku-4-5-20251001"
+parsing:
+  # Use Docling for PDF → Markdown conversion (always enabled)
+  docling: true
+  # Use enhanced semantic extraction after Docling (Phase 3+, requires langextract)
+  enhanced_extraction: false
+  # Docling images_scale for extracted figures: 1.0 ≈ 72 DPI (low), 2.0 (default, good quality), 3.0 (print)
+  images_scale: 2.0
+  # How images are referenced in the exported markdown that the LLM reads.
+  # "referenced" → ![caption](images/fig_1.png)  — LLM sees filenames, can reference them (default)
+  # "embedded"   → base64 data URI inline — larger markdown, useful if you want self-contained output
+  image_ref_mode: "referenced"
+
+presentation:
+  # Default slide count range (planner will stay within this)
+  min_slides: 8
+  max_slides: 20
+  # Reveal.js theme override (overridden by design agent tokens)
+  theme: "white"
+  # Add slide numbers to the presentation
+  slide_numbers: true
+
+export:
+  # Output directory for exported PDFs
+  output_dir: "exports"
+  # PDF page format
+  pdf_format: "A4"
+  pdf_landscape: true

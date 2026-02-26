@@ -1,0 +1,27 @@
+# Local development config — uses Ollama, zero API cost.
+#
+# SETUP (one time):
+#   brew install ollama            # or https://ollama.com/download
+#   ollama pull qwen3:4b           # ~2.5 GB — fast, fits any Mac
+#   ollama serve                   # or it auto-starts on macOS
+#
+# RUN:
+#   SLIDESYNTH_CONFIG=config.local.yaml python cli.py serve
+#
+# NOTES:
+# - qwen3:4b is good enough to validate the agent pipeline and tool calls.
+# - HTML output quality will be lower than a frontier model.
+# - Swap to qwen3:14b or qwen3:32b for better slide quality (needs more RAM/time).
+# - No OLLAMA_BASE_URL needed unless you changed the default (localhost:11434).
+
+models:
+  orchestrator: "ollama:qwen3:4b"
+  research:     "ollama:qwen3:4b"
+  planner:      "ollama:qwen3:4b"
+  generator:    "ollama:qwen3:4b"
+  design:       "ollama:qwen3:4b"
+  editor:       "ollama:qwen3:4b"
+
+# Keep enhanced extraction off locally — it still needs a Gemini key.
+parsing:
+  enhanced_extraction: false
