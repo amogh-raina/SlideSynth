@@ -1,6 +1,6 @@
 ---
 name: deep-agents-orchestration
-description: "INVOKE THIS SKILL when using subagents, task planning, or human approval in Deep Agents. Covers SubAgentMiddleware, TodoList for planning, and HITL interrupts. CRITICAL: Fixes for custom subagents NOT inheriting skills (must specify explicitly), interrupt_on requiring checkpointer, and subagent statelessness."
+description: "INVOKE THIS SKILL when using subagents, task planning, or human approval in Deep Agents. Covers SubAgentMiddleware, TodoList for planning, and HITL interrupts."
 ---
 
 <overview>
@@ -99,6 +99,7 @@ agent = create_deep_agent(
         {
             "name": "code-deployer",
             "description": "Deploy code to production",
+            "system_prompt": "You deploy code after tests pass.",
             "tools": [run_tests, deploy_to_prod],
             "interrupt_on": {"deploy_to_prod": True},  # Require approval
         }
@@ -293,7 +294,7 @@ Complete workflow: trigger an interrupt, check state, approve action, and resume
 ```python
 from deepagents import create_deep_agent
 from langgraph.checkpoint.memory import MemorySaver
-from langchain.schema import Command
+from langgraph.types import Command
 
 agent = create_deep_agent(
     interrupt_on={"write_file": True},
@@ -312,14 +313,8 @@ state = agent.get_state(config)
 if state.next:
     print(f"Pending action")
 
-# Step 3: Approve
-agent.update_state(
-    config,
-    {"messages": [Command(resume={"decisions": [{"type": "approve"}]})]}
-)
-
-# Step 4: Resume
-result = agent.invoke(None, config=config)
+# Step 3: Approve and resume
+result = agent.invoke(Command(resume={"decisions": [{"type": "approve"}]}), config=config)
 ```
 </python>
 <typescript>
@@ -346,13 +341,10 @@ if (state.next) {
   console.log("Pending action");
 }
 
-// Step 3: Approve
-await agent.updateState(config, {
-  messages: [new Command({ resume: { decisions: [{ type: "approve" }] } })]
-});
-
-// Step 4: Resume
-result = await agent.invoke(null, config);
+// Step 3: Approve and resume
+result = await agent.invoke(
+  new Command({ resume: { decisions: [{ type: "approve" }] } }), config
+);
 ```
 </typescript>
 </ex-approval-workflow>
@@ -361,20 +353,19 @@ result = await agent.invoke(null, config);
 <python>
 Reject a pending action with feedback, prompting the agent to try a different approach.
 ```python
-agent.update_state(
-    config,
-    {"messages": [Command(resume={"decisions": [{"type": "reject", "message": "Run tests first"}]})]}
+result = agent.invoke(
+    Command(resume={"decisions": [{"type": "reject", "message": "Run tests first"}]}),
+    config=config,
 )
-result = agent.invoke(None, config=config)
 ```
 </python>
 <typescript>
 Reject a pending action with feedback, prompting the agent to try a different approach.
 ```typescript
-await agent.updateState(config, {
-  messages: [new Command({ resume: { decisions: [{ type: "reject", message: "Run tests first" }] } })]
-});
-const result = await agent.invoke(null, config);
+const result = await agent.invoke(
+  new Command({ resume: { decisions: [{ type: "reject", message: "Run tests first" }] } }),
+  config,
+);
 ```
 </typescript>
 </ex-reject-with-feedback>
@@ -383,26 +374,16 @@ const result = await agent.invoke(null, config);
 <python>
 Edit the proposed action arguments before allowing execution.
 ```python
-# Edit the proposed action
-agent.update_state(
-    config,
-    {
-        "messages": [
-            Command(
-                resume={
-                    "decisions": [{
-                        "type": "edit",
-                        "args": {
-                            "query": "DELETE FROM users WHERE last_login < '2020-01-01' LIMIT 100"
-                        }
-                    }]
-                }
-            )
-        ]
-    }
+result = agent.invoke(
+    Command(resume={"decisions": [{
+        "type": "edit",
+        "edited_action": {
+            "name": "execute_sql",
+            "args": {"query": "DELETE FROM users WHERE last_login < '2020-01-01' LIMIT 100"},
+        },
+    }]}),
+    config=config,
 )
-
-result = agent.invoke(None, config=config)
 ```
 </python>
 </ex-edit-before-execution>
@@ -452,13 +433,12 @@ A consistent thread_id is required to resume interrupted workflows.
 ```python
 # WRONG: Can't resume without thread_id
 agent.invoke({"messages": [...]})
-agent.update_state(...)  # Which thread?
 
 # CORRECT
 config = {"configurable": {"thread_id": "session-1"}}
 agent.invoke({...}, config=config)
-agent.update_state(config, ...)
-agent.invoke(None, config=config)  # Resume
+# Resume with Command using same config
+agent.invoke(Command(resume={"decisions": [{"type": "approve"}]}), config=config)
 ```
 </python>
 <typescript>
@@ -466,13 +446,12 @@ A consistent thread_id is required to resume interrupted workflows.
 ```typescript
 // WRONG: Can't resume without thread_id
 await agent.invoke({ messages: [...] });
-await agent.updateState(...);  // Which thread?
 
 // CORRECT
 const config = { configurable: { thread_id: "session-1" } };
 await agent.invoke({ messages: [...] }, config);
-await agent.updateState(config, ...);
-await agent.invoke(null, config);  // Resume
+// Resume with Command using same config
+await agent.invoke(new Command({ resume: { decisions: [{ type: "approve" }] } }), config);
 ```
 </typescript>
 </fix-thread-id-required-for-resumption>
@@ -481,11 +460,12 @@ await agent.invoke(null, config);  // Resume
 <python>
 Interrupts happen BETWEEN invoke() calls, not mid-execution.
 ```python
-result = agent.invoke({...}, config=config)  # Step 1: invoke() -> interrupt triggers
-state = agent.get_state(config)              # Step 2: Check state for interrupts
-if state.next:                               # Has pending interrupts - handle them
-    agent.update_state(config, {...})
-    result = agent.invoke(None, config=config)  # Step 3: Resume
+result = agent.invoke({...}, config=config)       # Step 1: triggers interrupt
+if "__interrupt__" in result:                      # Step 2: check for interrupt
+    result = agent.invoke(                         # Step 3: resume
+        Command(resume={"decisions": [{"type": "approve"}]}),
+        config=config,
+    )
 ```
 </python>
 </fix-interrupt-checks-between-invocations>

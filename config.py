@@ -2,6 +2,32 @@
 
 Loads from config.yaml if present, falls back to environment variables.
 All model strings use LangChain's init_chat_model format: "provider:model-name".
+
+Supported providers:
+  - anthropic:model-name   → Anthropic API (requires ANTHROPIC_API_KEY)
+  - openai:model-name      → OpenAI API (requires OPENAI_API_KEY)
+  - ollama:model-name      → Local Ollama instance
+  - openrouter:model-name  → OpenRouter API (requires OPENROUTER_API_KEY)
+
+The openrouter provider uses the native ``langchain-openrouter`` package
+(``ChatOpenRouter``) which provides first-class OpenRouter support including
+reasoning tokens.  You can use any model available on OpenRouter
+(e.g. openrouter:moonshotai/kimi-k2.5).
+
+Thinking / Extended Reasoning:
+  Per-role thinking can be enabled in config.yaml under the ``thinking`` key.
+  Each provider uses different kwargs — the config layer auto-translates:
+
+  - anthropic  → thinking={"type":"enabled","budget_tokens":N}, max_tokens raised
+  - openai     → reasoning_effort="low"|"medium"|"high" (o-series models)
+  - google_genai / google_vertexai → thinking={"type":"enabled","budget_tokens":N}
+  - deepseek   → thinking={"type":"enabled","budget_tokens":N}
+  - openrouter → reasoning={"effort":"high"} via ChatOpenRouter
+  - ollama     → think=True (for models that support it, e.g. qwen3)
+  - others     → generic kwargs passthrough via model_kwargs
+
+  When thinking is enabled for a role, ``model()`` returns a pre-built
+  BaseChatModel instance instead of a plain string.
 """
 
 from __future__ import annotations
@@ -41,6 +67,8 @@ class SlideSynthConfig:
             **_DEFAULT_MODELS,
             **data.get("models", {}),
         }
+        # Per-role thinking / extended reasoning configuration
+        self.thinking: Dict[str, Dict[str, Any]] = data.get("thinking", {})
         parsing = data.get("parsing", {})
         self.enhanced_extraction: bool = parsing.get("enhanced_extraction", False)
         self.langextract_model: str = parsing.get(
@@ -53,9 +81,101 @@ class SlideSynthConfig:
         # "embedded"   → base64 data URI inline
         self.image_ref_mode: str = parsing.get("image_ref_mode", "referenced")
 
-    def model(self, role: str) -> str:
-        """Return the model string for the given agent role."""
-        return self.models.get(role, _DEFAULT_MODELS.get(role, "anthropic:claude-sonnet-4-5-20250929"))
+    # ── Model construction ────────────────────────────────────────────
+
+    def model(self, role: str):
+        """Return a model instance or init_chat_model-compatible string for *role*.
+
+        When thinking is enabled for this role, returns a pre-built
+        BaseChatModel with provider-specific thinking kwargs.
+        Otherwise returns the ``"provider:model-name"`` string.
+        """
+        model_str: str = self.models.get(
+            role, _DEFAULT_MODELS.get(role, "anthropic:claude-sonnet-4-5-20250929")
+        )
+        thinking_cfg = self.thinking.get(role, {})
+        has_thinking = thinking_cfg.get("enabled", False)
+
+        if model_str.startswith("openrouter:"):
+            return self._make_openrouter_model(model_str, thinking_cfg)
+
+        if has_thinking:
+            return self._make_model_with_thinking(model_str, thinking_cfg)
+
+        return model_str
+
+    # ── Provider-specific builders ────────────────────────────────────
+
+    def _make_model_with_thinking(self, model_str: str, thinking_cfg: Dict[str, Any]):
+        """Build a chat model with extended thinking / reasoning enabled.
+
+        Detects the provider from the model string and applies the correct
+        kwargs.  Falls back to a generic ``thinking`` kwarg for unknown
+        providers.
+        """
+        from langchain.chat_models import init_chat_model  # lazy
+
+        provider, _ = (model_str.split(":", 1) + [""])[:2]
+        budget: int = int(thinking_cfg.get("budget_tokens", 10_000))
+        effort: str = thinking_cfg.get("effort", "medium")  # low | medium | high
+
+        kwargs: Dict[str, Any] = {}
+
+        if provider == "anthropic":
+            kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+            # Anthropic requires max_tokens >= budget_tokens when thinking is on
+            kwargs["max_tokens"] = max(16_000, budget + 8_000)
+
+        elif provider == "openai":
+            # For o-series (o1, o3, o4-mini) reasoning is built-in.
+            # reasoning_effort tunes how long the model thinks.
+            kwargs["reasoning_effort"] = effort
+
+        elif provider in ("google_genai", "google_vertexai"):
+            kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+
+        elif provider == "deepseek":
+            kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+
+        elif provider == "ollama":
+            # Ollama models that support thinking (e.g. qwen3) use think=True
+            kwargs["think"] = True
+
+        else:
+            # Generic fallback — try the most common param name
+            kwargs["thinking"] = {"type": "enabled", "budget_tokens": budget}
+
+        return init_chat_model(model_str, **kwargs)
+
+    def _make_openrouter_model(
+        self, model_str: str, thinking_cfg: Dict[str, Any] | None = None
+    ):
+        """Create a ``ChatOpenRouter`` instance from ``langchain-openrouter``.
+
+        If thinking/reasoning is enabled, sets the native ``reasoning``
+        parameter that ``ChatOpenRouter`` supports directly.
+
+        See https://openrouter.ai/docs/guides/best-practices/reasoning-tokens
+        """
+        from langchain_openrouter import ChatOpenRouter  # lazy import
+
+        model_name = model_str.split(":", 1)[1]
+
+        kwargs: Dict[str, Any] = {"model": model_name}
+
+        thinking_cfg = thinking_cfg or {}
+        if thinking_cfg.get("enabled"):
+            effort = thinking_cfg.get("effort", "medium")
+            reasoning: Dict[str, Any] = {"effort": effort}
+            summary = thinking_cfg.get("summary")
+            if summary:
+                reasoning["summary"] = summary
+            budget = thinking_cfg.get("budget_tokens")
+            if budget:
+                reasoning["max_tokens"] = int(budget)
+            kwargs["reasoning"] = reasoning
+
+        return ChatOpenRouter(**kwargs)
 
     @property
     def custom_endpoints(self) -> Dict[str, Any]:

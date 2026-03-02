@@ -1,0 +1,22 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+.env
+.vscode
+web-app/node_modules
+web-app/dist
+checkpoints*
+.python-version
+# Virtual environments
+.venv
+
+# SQLite checkpointer DB (auto-created, contains session state)
+data/checkpoints.db
+
+# folders
+data/projects
+example presentations-pdf version

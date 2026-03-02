@@ -4,22 +4,77 @@
 #   SLIDESYNTH_MODEL_<ROLE>  (e.g. SLIDESYNTH_MODEL_ORCHESTRATOR)
 #   ANTHROPIC_API_KEY
 #   OPENAI_API_KEY
+#   OPENROUTER_API_KEY       (for openrouter: models)
+#
+# Supported model providers:
+#   anthropic:model-name     — Anthropic Claude models
+#   openai:model-name        — OpenAI GPT models
+#   ollama:model-name        — Local Ollama models
+#   openrouter:model-name    — Any model via OpenRouter (e.g. openrouter:moonshotai/kimi-k2.5)
 
 models:
   # Multi-step reasoning and pipeline coordination
-  orchestrator: "anthropic:claude-sonnet-4-5-20250929"
-  # Content analysis — benefits from long context and careful reasoning
-  research: "anthropic:claude-haiku-4-5-20251001"
-  # Slide planning — structured output, good instruction following
-  planner: "anthropic:claude-haiku-4-5-20251001"
+  orchestrator: "openrouter:moonshotai/kimi-k2.5"
+  # Content analysis & slide planning — benefits from long context and careful reasoning
+  research: "openrouter:moonshotai/kimi-k2.5"
   # Design token generation — creative with guidelines
-  design: "anthropic:claude-haiku-4-5-20251001"
+  design: "openrouter:moonshotai/kimi-k2.5"
   # HTML generation — precise, code-oriented
-  generator: "anthropic:claude-haiku-4-5-20251001"
-  # Plan verification — semantic scoring against source material
-  verifier: "anthropic:claude-haiku-4-5-20251001"
+  generator: "openrouter:moonshotai/kimi-k2.5"
   # ReAct editing loop — fast, iterative reasoning
-  editor: "anthropic:claude-haiku-4-5-20251001"
+  editor: "openrouter:moonshotai/kimi-k2.5"
+
+# ---------------------------------------------------------------------------
+# Thinking / Extended Reasoning (per-role)
+# ---------------------------------------------------------------------------
+# Enable extended thinking for specific subagents.
+# This works independently of which provider/model you use.
+#
+# Provider mapping (auto-detected from the model string above):
+#   anthropic    → thinking={"type":"enabled","budget_tokens":N}
+#   openai       → reasoning_effort="low|medium|high" (o-series models)
+#   google_genai → thinking={"type":"enabled","budget_tokens":N}
+#   deepseek     → thinking={"type":"enabled","budget_tokens":N}
+#   openrouter   → reasoning={"effort":"high"} via native ChatOpenRouter
+#   ollama       → think=True (for models like qwen3 that support it)
+#
+# Parameters:
+#   enabled:       true/false — whether to enable thinking for this role
+#   budget_tokens: max tokens the model can use for thinking (default: 10000)
+#   effort:        reasoning effort level — values depend on provider:
+#                  OpenAI o-series: "low" | "medium" | "high"
+#                  OpenRouter: "minimal" | "low" | "medium" | "high" | "xhigh"
+#   summary:       (openrouter only) "auto" | "concise" | "detailed"
+thinking:
+  # Research benefits most from extended thinking — it needs to deeply
+  # analyse the paper and plan the slide narrative.
+  research:
+    enabled: true
+    effort: medium
+  # Other roles default to no reasoning (faster, cheaper).
+  # Uncomment to enable:
+  # orchestrator:
+  #   enabled: true
+  #   effort: medium
+  # design:
+  #   enabled: true
+  #   effort: medium
+  # generator:
+  #   enabled: true
+  #   effort: medium
+  # editor:
+  #   enabled: true
+  #   effort: low
+
+# Example: use Kimi K2.5 via OpenRouter for all agents
+# (requires OPENROUTER_API_KEY env var)
+#
+# models:
+#   orchestrator: "openrouter:moonshotai/kimi-k2.5"
+#   research:     "openrouter:moonshotai/kimi-k2.5"
+#   design:       "openrouter:moonshotai/kimi-k2.5"
+#   generator:    "openrouter:moonshotai/kimi-k2.5"
+#   editor:       "openrouter:moonshotai/kimi-k2.5"
 parsing:
   # Use Docling for PDF → Markdown conversion (always enabled)
   docling: true

@@ -6,6 +6,7 @@ WebSocket protocol (ws://localhost:8000/ws/{thread_id}):
   Client → Server:
     {"type": "chat",   "message": "<user text>"}
     {"type": "resume", "decision": "approve"|"reject"|"edit", "message": "<optional>", "args": {}}
+    {"type": "stop"}     — cancel the running agent stream
 
   Server → Client:
     {"type": "thinking",    "agent": "<name>", "content": "<token chunk>"}
@@ -65,8 +66,15 @@ def _get_agent(thread_id: str):
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Per-project agents are created on first WS connect — no warmup needed.
+    # Initialise the shared AsyncSqliteSaver for conversation persistence.
+    from agent import _init_shared_checkpointer, get_shared_checkpointer  # noqa: PLC0415
+
+    await _init_shared_checkpointer()
     yield
+    # Gracefully close the SQLite connection on shutdown.
+    saver = get_shared_checkpointer()
+    if saver is not None and hasattr(saver, "conn"):
+        await saver.conn.close()
 
 
 # ---------------------------------------------------------------------------
@@ -80,16 +88,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Serve the web UI and any generated project files
+# Serve the web UI — prefer built Vue app, fall back to legacy HTML
+_VUE_DIST = Path(__file__).parent.parent / "web-app" / "dist"
 _WEB_DIR = Path(__file__).parent.parent / "web"
-if _WEB_DIR.exists():
+
+if _VUE_DIST.exists():
+    app.mount("/ui", StaticFiles(directory=str(_VUE_DIST), html=True), name="web")
+elif _WEB_DIR.exists():
     app.mount("/ui", StaticFiles(directory=str(_WEB_DIR), html=True), name="web")
 
 # ---------------------------------------------------------------------------
 # REST routes (import after app is created to avoid circular refs)
 # ---------------------------------------------------------------------------
 
-from server.routes import router  # noqa: E402
+from server.routes import router, append_chat_event  # noqa: E402
 
 app.include_router(router, prefix="/api")
 
@@ -99,6 +111,8 @@ app.include_router(router, prefix="/api")
 
 # Active WebSocket connections keyed by thread_id
 _connections: Dict[str, WebSocket] = {}
+# Active streaming tasks keyed by thread_id (for cancellation)
+_active_tasks: Dict[str, asyncio.Task] = {}
 
 
 def _unwrap(value: Any) -> Any:
@@ -226,9 +240,13 @@ async def _stream_agent(ws: WebSocket, thread_id: str, messages: list) -> None:
         logger.exception("Error during agent stream for thread %s", thread_id)
         return
 
+    except asyncio.CancelledError:
+        await _send(ws, {"type": "complete", "message": "(stopped by user)"})
+        return
+
     # After stream finishes, check for pending interrupts
     try:
-        state = agent.get_state(config)
+        state = await agent.aget_state(config)
         if state.next:
             # There are pending nodes — indicates an interrupt
             interrupts = _extract_interrupts(state)
@@ -241,6 +259,9 @@ async def _stream_agent(ws: WebSocket, thread_id: str, messages: list) -> None:
                 },
             )
         else:
+            # Persist assistant reply
+            if last_message:
+                append_chat_event(thread_id, {"role": "assistant", "content": last_message})
             await _send(ws, {"type": "complete", "message": last_message})
     except Exception as exc:
         logger.warning("Could not check state after stream: %s", exc)
@@ -275,7 +296,7 @@ async def _resume_agent(ws: WebSocket, thread_id: str, decision: Dict[str, Any])
         # Resume by invoking with None input and the Command
         last_message = ""
         current_agent = "SlideSynth"
-        async for event in agent.astream_events(
+        async for event in agent.astream_events(  # noqa: E501
             Command(resume={"decisions": [resume_payload]}),
             config=config,
             version="v2",
@@ -323,12 +344,18 @@ async def _resume_agent(ws: WebSocket, thread_id: str, decision: Dict[str, Any])
                         await _send(ws, {"type": "todo_update", "todos": todos})
 
         # Check for another interrupt after resume
-        state = agent.get_state(config)
+        state = await agent.aget_state(config)
         if state.next:
             interrupts = _extract_interrupts(state)
             await _send(ws, {"type": "interrupt", "action": interrupts.get("tool", ""), "data": interrupts})
         else:
+            if last_message:
+                append_chat_event(thread_id, {"role": "assistant", "content": last_message})
             await _send(ws, {"type": "complete", "message": last_message})
+
+    except asyncio.CancelledError:
+        await _send(ws, {"type": "complete", "message": "(stopped by user)"})
+        return
 
     except Exception as exc:
         await _send(ws, {"type": "error", "message": str(exc)})
@@ -392,19 +419,43 @@ async def websocket_endpoint(websocket: WebSocket, thread_id: str):
                 if not message:
                     await _send(websocket, {"type": "error", "message": "Empty message"})
                     continue
-                await _stream_agent(
-                    websocket,
-                    thread_id,
-                    [{"role": "user", "content": message}],
+                # Persist user message
+                append_chat_event(thread_id, {"role": "user", "content": message})
+                task = asyncio.create_task(
+                    _stream_agent(websocket, thread_id, [{"role": "user", "content": message}])
                 )
+                _active_tasks[thread_id] = task
+                try:
+                    await task
+                finally:
+                    _active_tasks.pop(thread_id, None)
 
             elif msg_type == "resume":
-                await _resume_agent(websocket, thread_id, data)
+                task = asyncio.create_task(
+                    _resume_agent(websocket, thread_id, data)
+                )
+                _active_tasks[thread_id] = task
+                try:
+                    await task
+                finally:
+                    _active_tasks.pop(thread_id, None)
+
+            elif msg_type == "stop":
+                task = _active_tasks.get(thread_id)
+                if task and not task.done():
+                    task.cancel()
+                    logger.info("Agent stream cancelled for thread %s", thread_id)
+                else:
+                    await _send(websocket, {"type": "complete", "message": ""})
 
             else:
                 await _send(websocket, {"type": "error", "message": f"Unknown type: {msg_type}"})
 
     except WebSocketDisconnect:
         logger.info("WS disconnected: thread=%s", thread_id)
+        # Cancel any running task on disconnect
+        task = _active_tasks.pop(thread_id, None)
+        if task and not task.done():
+            task.cancel()
     finally:
         _connections.pop(thread_id, None)

@@ -27,10 +27,10 @@
     list-style: none;
     padding: 0;
     margin: 0;
-    flex: 1;
+    flex: {% if custom_html %}0 0 auto{% else %}1{% endif %};
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: {% if custom_html %}flex-start{% else %}center{% endif %};
     gap: {{ tokens.spacing.bullet_gap | default('0.7em') }};
   ">
     {% for bullet in bullets %}
@@ -53,6 +53,19 @@
     </li>
     {% endfor %}
   </ul>
+  {% endif %}
+
+  <!-- Custom HTML block (metric cards, charts, callouts, etc.) -->
+  {% if custom_html %}
+  <div class="slide-custom-html" style="
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    {% if bullets %}margin-top: 1rem;{% endif %}
+  ">
+    {{ custom_html }}
+  </div>
   {% endif %}
 
   <aside class="notes">{{ speaker_notes | default('') }}</aside>

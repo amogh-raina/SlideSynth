@@ -1,184 +1,336 @@
 ---
 name: research
-description: PMRC-aligned content analysis for academic papers. Covers presentation-logic reorganisation, asset significance scoring, central message extraction, and structured output for downstream agents.
+description: Unified content analysis and slide planning for academic papers. Reads the parsed paper and assets, performs knowledge extraction, and produces an enriched slide_outline.json with narrative_direction briefs, key_data, and visual_notes per slide. Does not produce bullet lists — produces communication briefs for the generator.
 ---
 
-# Content Analysis Skill — PMRC-Aligned Knowledge Extraction
+# Research & Slide Planning Skill — Knowledge-to-Brief Architecture
 
 ## Purpose
 
-Transform a parsed academic paper into a content_analysis.md that reorganises
-information by PRESENTATION LOGIC — not paper structure. This ensures downstream
-agents (planner, generator, editor) receive pre-structured input that maps
-directly to the four PMRC narrative phases.
+Transform a parsed academic paper into a complete `slide_outline.json` where
+each slide is represented as a **communication brief** — not a pre-rendered
+bullet list. You are a creative director briefing a visual designer (the
+generator). Your job is to define what argument each slide must make and what
+evidence supports it. The generator decides the visual form.
 
 ## Core Philosophy
 
-You are not summarising the paper. You are performing **knowledge transfer
-architecture**: identifying what the audience needs to know, in what order, and
-at what depth, to understand the paper's contribution and significance.
+**You write arguments. The generator builds slides.**
+
+You are responsible for:
+- What claim each slide must establish
+- What evidence from the paper supports each claim
+- How each argument should be framed and what tone it should carry
+- Which assets are relevant and what transformation they need
+
+You are NOT responsible for:
+- Whether content becomes bullets, metric cards, or a two-column layout
+- Specific HTML structure or styling
+- Visual composition decisions (left vs right, full vs partial image)
+
+The `narrative_direction` field is your primary output per slide.
+`key_data`, `visual_notes`, and `slide_goal` complete the brief.
+`bullets[]` does not exist in your output.
 
 ## Reading Strategy (Ordered)
 
 1. Read `/docs/assets_manifest.json` first — understand available visual assets.
-2. Read `/docs/document.md` from top to bottom with this focus:
-   - Abstract — extract central_message candidate
-   - Introduction — extract background_context + problem_motivation
-   - Related Work — enrich background_context (what exists, what's missing)
-   - Methods — extract solution_overview + technical_approach
-   - Results — extract evidence_proof (numbers, tables, figures)
-   - Conclusion — extract impact_significance + future directions
+2. Read `/docs/document.md` from top to bottom:
+   - Abstract: extract central_message candidate
+   - Introduction: background context + problem motivation
+   - Related Work: enrich understanding of what's unsolved
+   - Methods: solution overview + technical approach
+   - Results: evidence, key numbers, comparisons, ablation findings
+   - Conclusion: impact and future directions
+3. For each figure/table in the manifest, note type, caption, and relevance.
+4. Only after reading fully: begin planning slides.
 
-## PMRC Section Extraction Guide
+---
 
-### background_context (maps to PMRC Phase 1: Problem)
+## Slide Title Writing Guide
 
-Answer: "Why does this field matter to someone outside it?"
-- Look for: opening paragraphs of Introduction that discuss the field broadly
-- Include: compelling statistics, real-world applications, market/societal impact
-- Include: basic concepts a non-expert needs (define key terms)
-- Tone: accessible, engaging, big-picture
-- Length: 3-5 paragraphs
+This is the first thing you write for each slide and the most important.
 
-Common sources in the paper:
-- First 2-3 paragraphs of Introduction
-- Motivation section (if separate)
-- Abstract opening sentence
+### The One Rule
+> A slide title is the CONCLUSION, not the SUBJECT.
 
-### problem_motivation (maps to PMRC Phase 1: Problem)
+The audience reads the title first. A topic label ("The Framework") forces
+them to read the whole slide to understand the point. A claim ("A framework
+that learns your style from examples you already have") lets them understand
+the point immediately — the slide body becomes supporting evidence.
 
-Answer: "Given this important field, what specific problem remains unsolved?"
-- Look for: "however", "despite", "limitation", "challenge", "gap" in Introduction
-- Include: specific failure cases of existing methods
-- Include: why the problem is hard (technical barriers)
-- Include: what happens if we don't solve it (consequences)
-- Tone: concrete, specific, urgent
-- Length: 2-4 paragraphs
+### Title Formula by Narrative Phase
 
-### solution_overview (maps to PMRC Phase 2: Method — overview)
+**Hook slides (problem/context):** Make the stakes clear.
+- Pattern: "[Phenomenon] because [reason]" or "[X] fails to [Y]"
+- "Creating slides manually costs researchers 4-8 hours per paper"
+- "Current AI tools produce generic output because they ignore the presenter"
 
-Answer: "What is the core idea, in one paragraph?"
-- This is the 30-second elevator pitch of the paper
-- Include: main contribution in one sentence
-- Include: key insight that makes this approach different
-- Include: high-level design philosophy
-- Do NOT include implementation details — those go in technical_approach
-- Length: 1-2 paragraphs
+**Explain slides (method):** State the design decision, not the design.
+- Pattern: "[Approach] by [key mechanism or insight]"
+- "A three-stage pipeline that mirrors how humans actually prepare talks"
+- "Preferences are learned implicitly from examples the user already has"
 
-### technical_approach (maps to PMRC Phase 2: Method — details)
+**Prove slides (results):** State the finding. Include a number if possible.
+- Pattern: "[Method] outperforms/achieves/demonstrates [claim with evidence]"
+- "SlideTailor outperforms all baselines across every evaluation dimension"
+- "81.63% of expert reviewers preferred our output over the best baseline"
 
-Answer: "How does the method actually work?"
-- Structure as a numbered list of key components/modules
-- For each component: name, what it does, why it's designed this way
-- Note the overall pipeline/architecture flow
-- Include training protocol if novel
-- Length: 3-6 paragraphs (proportional to method complexity)
+**Inspire slides (conclusion):** State the broader takeaway.
+- Pattern: "[This work] enables/proves/shows [implication]"
+- "Personalization transforms automated slide generation from tool to collaborator"
 
-### evidence_proof (maps to PMRC Phase 3: Results)
+### Anti-Patterns (never use)
+| Bad title | Why | Fix |
+|---|---|---|
+| "The [X] Framework" | Topic label — no claim | "A [X] framework that [key claim]" |
+| "Experimental Results" | Section label | State the headline finding directly |
+| "Related Work" | Section label | "Prior methods fail on [specific problem]" |
+| "Limitations" | Neutral label | "Two limitations remain before broader deployment" |
+| "Method Overview" | No claim | "The core insight: [one sentence]" |
 
-Answer: "What data proves this method works?"
-- Always quote numbers with context: "84.3% on SQuAD 2.0 (Table 3)"
-- Flag the HEADLINE RESULT (biggest improvement, most impressive number)
-- Identify Table 1 explicitly — it almost always contains main results
-- List ablation findings with what each proves about the method
-- Note whether results are SOTA, competitive, or mixed
-- Length: 2-4 paragraphs
+---
 
-### impact_significance (maps to PMRC Phase 4: Conclusion)
+## Narrative Direction Writing Guide
 
-Answer: "Why does this matter beyond the paper?"
-- Practical applications and deployment scenarios
-- Limitations the authors acknowledge (be honest)
-- Future directions proposed
-- Broader field impact
-- Length: 1-3 paragraphs
+`narrative_direction` is a prose communication brief of 80-150 words.
+It is the most important field in the slide object.
 
-## Central Message Extraction
+### What it must contain
+1. **The argument** — what claim must the audience accept? State it first.
+2. **The evidence** — what specific paper content supports it? Name it.
+3. **The framing** — how to position it: "contrast with prior work",
+   "emphasise practical implication", "walk through each component in order"
+4. **The tone** — urgent (problem), explanatory (method), confident (results),
+   inspiring (conclusion)
 
-The central_message is ONE sentence answering:
-> "What is the most important thing this paper proves or demonstrates?"
+### Format
+- 80-150 words
+- One coherent paragraph
+- No hyphens, no numbered lists, no bullet syntax inside the direction
+- Write it as you would brief a designer colleague verbally
 
-Quality criteria:
-- Falsifiable or verifiable (a claim, not a topic)
-- 25 words or fewer
-- Uses the paper's own quantitative results where possible
-- Example: **"Our pruning algorithm achieves 3x speedup with < 1% accuracy loss on ImageNet."**
+### Quality Check Before Writing
+Ask yourself:
+1. Does my first sentence state a claim, not a topic?
+2. Do I name specific evidence (numbers, mechanisms, failure cases)?
+3. Does a generator reading this know HOW to frame the content?
+4. Is the tone right for this moment in the narrative?
 
-Anti-patterns:
-- BAD: "This paper proposes a new method for X" (too vague)
-- BAD: "We study the problem of X" (not a claim)
-- GOOD: Specific + measurable claim with numbers
+## key_data Writing Guide
 
-## Asset Assessment Heuristics
+`key_data` is a short list of facts that must appear on the slide verbatim.
+It is your insurance that the generator does not approximate or drop critical
+numbers.
 
-### Figure Priority Scoring
+**Include:**
+- Exact percentages: "75.80% overall score", "81.63% human win rate"
+- Exact comparisons: "+8.5pp vs PPTAgent (67.30%)"
+- Specific cost or scale figures: "$0.016 per deck (Qwen2.5)"
+- System/model names that must be spelled accurately: "PPTAgent", "AutoPresent"
 
-| Criterion | Priority |
+**Do NOT include:**
+- General descriptions (those belong in narrative_direction)
+- Anything that should be paraphrased rather than quoted exactly
+
+**Leave as `[]`** for slides with no hard numerical requirements.
+
+**Example for a results slide:**
+```json
+"key_data": [
+  "SlideTailor: 75.80% overall score",
+  "PPTAgent: 67.30% (best baseline, +8.5pp gap)",
+  "Human win rate: 81.63% (40 wins / 9 losses / 11 ties)",
+  "Cost: $0.665/deck (GPT-4.1) vs $0.016/deck (Qwen2.5)"
+]
+```
+
+---
+
+## visual_notes Writing Guide
+
+`visual_notes` tells the generator what content form fits this narrative
+and how to handle the key_data visually. It is REQUIRED on every slide
+except title_slide and conclusion.
+
+### Always state:
+1. What content form fits the narrative? (large callout, metric cards,
+   two-column contrast, annotated figure, styled table, or bullet list)
+2. What should dominate visually?
+3. How to render key_data — do not let it become a buried bullet
+
+## Slide Object Schema (Full Reference)
+
+```json
+{
+  "slide_number": 1,
+  "title": "Argumentative claim (8-15 words) — what the audience concludes from this slide",
+  "template": "title_slide | content_text | content_image_right | content_image_left | table_slide | full_image | two_column | equation_slide | conclusion",
+  "section": "hook | explain | prove | inspire",
+  "narrative_direction": "80-150 word prose brief: argument + evidence + framing + tone. No bullets.",
+  "key_data": ["Exact number or fact that must appear verbatim", "..."],
+  "assets": ["asset_id"],
+  "asset_decision": "USE_AS_IS | TRANSFORM | DESCRIBE | SKIP | null",
+  "asset_transform": "metric_cards | html_bar_chart | highlighted_table | simplified_table | two_column_comparison | null",
+  "visual_notes": "Required (except title/conclusion). Content form + visual emphasis + key_data rendering.",
+  "speaker_notes": "4-6 sentences. What to SAY, not what the slide shows. Include transition.",
+  "slide_goal": "After this slide, the audience understands/believes ___"
+}
+```
+
+---
+
+## Asset Decision Framework
+
+For EVERY asset in the manifest, make an explicit decision.
+Base decisions on TYPE, CAPTION, and RELEVANCE — not visual inspection.
+
+### Figure Assessment
+| Figure Type | Default Decision | Template |
+|---|---|---|
+| Architecture / flow diagram | USE_AS_IS | full_image or content_image_* |
+| Results chart/graph | USE_AS_IS or TRANSFORM | content_image_* or content_text |
+| Problem illustration | USE_AS_IS | content_image_* |
+| Complex multi-part figure | TRANSFORM (describe key panel) | content_text |
+| Qualitative examples | USE_AS_IS | content_image_* |
+| Supplementary figures | Usually SKIP | — |
+
+### Table Assessment
+| Table Type | Best Presentation | asset_transform |
+|---|---|---|
+| Main results (< 5 methods) | Highlighted table | highlighted_table |
+| Main results (> 5 methods) | Top rows + metric cards | metric_cards |
+| Ablation study | Highlighted table | highlighted_table |
+| Dataset statistics | Compact metric cards | metric_cards |
+| Hyperparameters | SKIP — speaker notes only | null |
+
+### Priority Rules
+| Asset Type | Priority |
 |---|---|
-| Architecture / flow diagram of the method | HIGH — always include |
-| Main result visualisation (performance curves, comparisons) | HIGH |
-| Problem illustration (showing the challenge) | MEDIUM-HIGH |
-| Ablation visualisation | MEDIUM |
-| Qualitative examples / samples | MEDIUM |
-| Related work comparison diagram | LOW-MEDIUM |
-| Supplementary / appendix figures | LOW |
+| Architecture / flow diagram | HIGH — always include |
+| Main result table (Table 1) | MANDATORY — always include |
+| Main result visualisation | HIGH |
+| Problem illustration | MEDIUM-HIGH |
+| Ablation tables | HIGH |
+| Qualitative examples | MEDIUM |
+| Dataset statistics tables | LOW — summarise as metric cards |
+| Hyperparameter tables | SKIP |
+| Supplementary figures | LOW |
 
-### Table Priority Scoring
+---
 
-| Criterion | Priority |
+## Template Selection Guide
+
+| Situation | Template |
 |---|---|
-| Table 1 (main experimental results) | MANDATORY — always include |
-| Ablation study tables | HIGH |
-| Comparison with baselines | MEDIUM-HIGH |
-| Dataset statistics | LOW-MEDIUM |
-| Hyperparameter settings | LOW |
+| Text argument with no figure | content_text |
+| Argument + supporting figure | content_image_right or content_image_left |
+| Hero diagram (self-explanatory, high quality) | full_image |
+| Two sides being contrasted | two_column |
+| Data comparison table | table_slide |
+| Key numbers / headline metrics | content_text (generator adds custom_html metric cards) |
+| Key equation | equation_slide |
+| Final summary | conclusion |
 
-### Assessment Format (per asset)
+---
 
-For each figure/table in the manifest, output:
+## Slide Planning Rules
 
-- **[asset_id]** (figure/table): [one-sentence description]
-  - Relevance: HIGH / MEDIUM / LOW
-  - Recommended PMRC phase: problem / method / results / conclusion
-  - Reason: [why include or skip]
+### Adaptive Slide Count
+| Paper Complexity | Recommended Slides |
+|---|---|
+| Short / workshop (< 6 pages) | 8-12 |
+| Standard single-contribution | 12-16 |
+| Rich multi-contribution | 16-22 |
+| Survey / review paper | 15-20 |
 
-## Keywords Strategy
+Quality over quantity. 12 excellent slides beat 18 mediocre ones.
 
-Keywords serve two purposes:
-1. Help the planner match domain vocabulary to slide content
-2. Help the designer choose appropriate visual tone
+### Section Allocation
+| Section | Purpose | Target % |
+|---|---|---|
+| hook | Title, context, problem statement | 15-20% |
+| explain | Solution overview, architecture, components | 35-45% |
+| prove | Results, comparisons, ablations | 25-35% |
+| inspire | Implications, future work, closing | 5-15% |
 
-Include:
-- 3-4 domain terms (e.g., "natural language processing", "transformer")
-- 2-3 method-specific terms (e.g., "attention pruning", "knowledge distillation")
-- 2-3 application terms (e.g., "real-time inference", "medical diagnosis")
+### Layout Rules
+- **Figure-Table Separation:** NEVER assign both a figure AND a table to one slide
+- **Template Variety:** No more than 3 consecutive same-template slides
+- **Visual Coverage:** 40-60% of content slides should have a visual element
+- **Text Run Limit:** No more than 3 consecutive text-only slides
+
+### Monotony Prevention Check
+Before writing the JSON, list your planned templates in order.
+If you see 3+ consecutive content_text entries → STOP. Fix at least one:
+- Any comparison in those slides? → two_column
+- Any figure available? → content_image_*
+- Any numbers? → content_text (generator will build metric cards from key_data)
+- One strong claim? → content_text with bold callout (specified in visual_notes)
+
+A run of 5+ slides with no visual element is always a planning failure. Fix here.
+
+### Content Deduplication
+Every slide must teach something NEW. If two slides overlap > 50%, merge them.
+Ask: "Does this slide contain at least one insight that does NOT appear anywhere else?"
+
+### Speaker Notes (per slide)
+- 4-6 sentences (80-150 words)
+- What the presenter SAYS, not what the slide SHOWS
+- Include specific numbers or context not visible on the slide
+- Include transition to next slide ("This brings us to...")
+- NEVER repeat slide content verbatim
+
+---
 
 ## Quality Checklist
 
-Before writing content_analysis.md:
-- [ ] central_message is 25 words or fewer and contains a measurable claim
-- [ ] background_context explains field importance without paper-specific details
-- [ ] problem_motivation clearly states what's unsolved and why it's hard
-- [ ] solution_overview gives a clear high-level picture in 1-2 paragraphs
-- [ ] technical_approach lists all key components with purpose
-- [ ] evidence_proof includes at least 2 specific numbers with context
-- [ ] Table 1 is explicitly identified in asset_assessment
-- [ ] keywords contains 8-15 terms
-- [ ] All HIGH-priority assets are flagged with recommended PMRC phase
+Before writing slide_outline.json, verify:
 
-## Output Contract (for downstream agents)
+### Titles
+- [ ] Every title is an argumentative claim (8-15 words), not a topic label
+- [ ] No title starts with "The [X]" or names a section of the paper
+- [ ] Every title passes the "stand-alone readability" test
 
-The planner will use these sections directly:
-- background_context -> Phase 1 slides (Problem)
-- problem_motivation -> Phase 1 slides (Problem)
-- solution_overview + key_contributions -> Phase 2 overview slides (Method)
-- technical_approach -> Phase 2 detail slides (Method)
-- evidence_proof -> Phase 3 slides (Results)
-- impact_significance -> Phase 4 slides (Conclusion)
+### Narrative Directions
+- [ ] Every slide (except title and conclusion) has a narrative_direction > 60 words
+- [ ] Every narrative_direction opens with a claim, not a description
+- [ ] No narrative_direction contains bullet syntax (hyphens, numbered lists)
+- [ ] Every narrative_direction names specific evidence from the paper
 
-The designer will use:
-- paper_info -> determine domain/venue
-- background_context -> understand visual tone
-- keywords -> domain-appropriate colour palette
+### Key Data
+- [ ] All critical numbers are captured verbatim in key_data
+- [ ] key_data uses exact figures (never "about 75%" or "approximately 80%")
 
-Ensure all sections are rich enough for downstream consumption.
+### Visual Notes
+- [ ] Every content slide has a visual_notes entry (not empty, not generic)
+- [ ] Every visual_notes entry specifies a content form, not just "show the figure"
+- [ ] key_data rendering is specified in visual_notes for data-heavy slides
+
+### Structure
+- [ ] central_message is 30 words max with a measurable claim
+- [ ] key_numbers has 3-8 entries suitable for metric cards
+- [ ] Title slide is first, conclusion slide is last
+- [ ] No slide has both a figure AND a table
+- [ ] Every asset has an explicit decision (USE/TRANSFORM/DESCRIBE/SKIP)
+- [ ] No more than 3 consecutive same-template slides
+- [ ] No more than 3 consecutive text-only slides
+- [ ] HIGH-priority assets are all assigned to slides
+- [ ] Every slide has a unique slide_goal
+
+---
+
+## Output Summary (IMPORTANT: keep context clean)
+
+Return a concise summary (400 words max) stating:
+1. Paper title and authors
+2. Central message (one sentence)
+3. Narrative arc chosen and rationale
+4. Total slide count and section breakdown (hook/explain/prove/inspire)
+5. Template distribution
+6. Asset decisions summary (USE_AS_IS / TRANSFORM / DESCRIBE / SKIP counts)
+7. Top 3 narrative_direction highlights (the 3 slides you're most confident about)
+8. Key numbers extracted (top 3 key_data candidates)
+9. Path of file written
+
+Do NOT return the full JSON contents.

@@ -30,20 +30,30 @@
   ">{{ bullets | first }}</p>
   {% endif %}
 
-  <!-- Table content (HTML injected directly) -->
+  <!-- Table content OR custom HTML alternative (HTML injected directly) -->
+  {% if custom_html %}
+  <div class="slide-custom-html" style="
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+  ">
+    {{ custom_html }}
+  </div>
+  {% else %}
   <div class="slide-table-wrapper" style="
     flex: 1;
     overflow: auto;
     font-family: '{{ tokens.fonts.body | default('Inter') }}', sans-serif;
     font-size: {{ tokens.typography.body_size | default('0.95rem') }};
-
-    /* Style injected tables */
   ">
     <style>
       .slide-table-wrapper table {
         width: 100%;
         border-collapse: collapse;
         font-size: inherit;
+        border-radius: 8px;
+        overflow: hidden;
       }
       .slide-table-wrapper th {
         background: {{ tokens.colors.primary | default('#1e3a8a') }};
@@ -51,21 +61,33 @@
         padding: 0.6em 1em;
         text-align: left;
         font-weight: 600;
+        font-size: 0.92em;
       }
       .slide-table-wrapper td {
         padding: 0.5em 1em;
-        border-bottom: 1px solid {{ tokens.colors.muted | default('#e5e7eb') }};
+        border-bottom: 1px solid {{ tokens.colors.divider_color | default(tokens.colors.muted | default('#e5e7eb')) }};
         color: {{ tokens.colors.text | default('#1f2937') }};
       }
       .slide-table-wrapper tr:nth-child(even) td {
-        background: {{ tokens.colors.highlight | default('#f3f4f6') }}22;
+        background: {{ tokens.colors.highlight_background | default('#f8fafc') }};
+      }
+      .slide-table-wrapper tr:hover td {
+        background: {{ tokens.colors.highlight_background | default('#f0f4ff') }};
       }
       .slide-table-wrapper td strong, .slide-table-wrapper td b {
         color: {{ tokens.colors.primary | default('#1e3a8a') }};
+        font-weight: 700;
+      }
+      /* Highlight best results — generator can add class="best-result" */
+      .slide-table-wrapper td.best-result,
+      .slide-table-wrapper tr.best-result td {
+        background: {{ tokens.colors.accent | default(tokens.colors.highlight | default('#fef3c7')) }}22;
+        font-weight: 600;
       }
     </style>
     {{ table_html | default('') }}
   </div>
+  {% endif %}
 
   <aside class="notes">{{ speaker_notes | default('') }}</aside>
 </section>

@@ -67,7 +67,6 @@ def resolve_vpath(virtual_path: str) -> Path:
 
 from .parse_pdf import parse_pdf
 from .quality_check import quality_check
-from .verify_plan import verify_plan
 from .html_generator import generate_slide_html, combine_presentation, switch_template
 from .export import export_to_pdf
 from .asset_manager import resolve_asset, copy_asset_to_slide, list_assets
@@ -81,7 +80,6 @@ __all__ = [
     # Tools
     "parse_pdf",
     "quality_check",
-    "verify_plan",
     "generate_slide_html",
     "combine_presentation",
     "switch_template",

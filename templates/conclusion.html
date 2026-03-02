@@ -54,6 +54,13 @@
   </ul>
   {% endif %}
 
+  <!-- Optional custom HTML (e.g., key metric callout) -->
+  {% if custom_html %}
+  <div style="margin: 0.5rem 0;">
+    {{ custom_html }}
+  </div>
+  {% endif %}
+
   <!-- Bottom bar: thank you / future work hint -->
   <div style="
     border-top: 1px solid rgba(255,255,255,0.25);

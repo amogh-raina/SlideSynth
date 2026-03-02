@@ -5,6 +5,7 @@ All routes are mounted under /api by server/app.py.
 
 from __future__ import annotations
 
+import json
 import shutil
 import uuid
 from pathlib import Path
@@ -153,6 +154,50 @@ async def delete_project(thread_id: str):
         raise HTTPException(status_code=404, detail=f"Project {thread_id} not found")
     shutil.rmtree(project_dir)
     return {"deleted": thread_id}
+
+
+# ---------------------------------------------------------------------------
+# Chat history persistence
+# ---------------------------------------------------------------------------
+
+def _chat_history_path(thread_id: str) -> Path:
+    return _project_dir(thread_id) / "chat_history.json"
+
+
+def append_chat_event(thread_id: str, event: dict) -> None:
+    """Append a chat event to the project's chat_history.json.
+
+    Called from the WebSocket handler to persist messages.
+    """
+    path = _chat_history_path(thread_id)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    history: list = []
+    if path.exists():
+        try:
+            history = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, ValueError):
+            history = []
+    history.append(event)
+    path.write_text(json.dumps(history, ensure_ascii=False), encoding="utf-8")
+
+
+@router.get(
+    "/projects/{thread_id}/chat",
+    summary="Retrieve persisted chat history",
+)
+async def get_chat_history(thread_id: str):
+    """Return the saved chat events for a project.
+
+    Used by the frontend to restore conversation state when switching projects.
+    """
+    path = _chat_history_path(thread_id)
+    if not path.exists():
+        return JSONResponse(content=[])
+    try:
+        history = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, ValueError):
+        history = []
+    return JSONResponse(content=history)
 
 
 @router.get("/health", summary="Health check")

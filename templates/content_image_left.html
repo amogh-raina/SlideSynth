@@ -36,8 +36,10 @@
             box-shadow: 0 4px 12px rgba(0,0,0,0.12);
           ">
       </figure>
-      {% else %}
-      <div style="width: 100%; padding-top: 66%; background: {{ tokens.colors.muted | default('#e5e7eb') }}; border-radius: 6px;"></div>
+      {% elif custom_html %}
+      <div style="width: 100%;">
+        {{ custom_html }}
+      </div>
       {% endif %}
     </div>
 

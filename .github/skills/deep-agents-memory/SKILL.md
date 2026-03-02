@@ -1,6 +1,6 @@
 ---
 name: deep-agents-memory
-description: "INVOKE THIS SKILL when your Deep Agent needs memory, persistence, or filesystem access. Covers StateBackend (ephemeral), StoreBackend (persistent), FilesystemMiddleware, and CompositeBackend for routing. CRITICAL: Fixes for longest-prefix routing in CompositeBackend, path selection for persistence, and Store requirement."
+description: "INVOKE THIS SKILL when your Deep Agent needs memory, persistence, or filesystem access. Covers StateBackend (ephemeral), StoreBackend (persistent), FilesystemMiddleware, and CompositeBackend for routing."
 ---
 
 <overview>
@@ -180,7 +180,7 @@ def save_user_preference(key: str, value: str, runtime: ToolRuntime) -> str:
 store = InMemoryStore()
 
 agent = create_agent(
-    model="gpt-4",
+    model="gpt-4.1",
     tools=[get_user_preference, save_user_preference],
     store=store
 )
