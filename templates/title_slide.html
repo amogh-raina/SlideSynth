@@ -10,17 +10,32 @@
     text-align: center;
     height: 100%;
     box-sizing: border-box;
+    position: relative;
   ">
 
-  <div style="max-width: 900px; width: 100%;">
+  <!-- Decorative top accent -->
+  <div style="
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 6px;
+    background: linear-gradient(90deg,
+      {{ tokens.colors.primary | default('#1e3a8a') }},
+      {{ tokens.colors.secondary | default('#3b82f6') }},
+      {{ tokens.colors.accent | default(tokens.colors.highlight | default('#f59e0b')) }});
+  "></div>
 
-    <!-- Coloured accent bar -->
+  <div style="max-width: 850px; width: 100%;">
+
+    <!-- Decorative accent element -->
     <div style="
-      width: 80px; height: 5px;
-      background: {{ tokens.colors.primary | default('#1e3a8a') }};
-      margin: 0 auto 2rem auto;
-      border-radius: 3px;
-    "></div>
+      width: 50px; height: 50px;
+      border-radius: 12px;
+      background: {{ tokens.colors.highlight_background | default('#f0f4ff') }};
+      border: 2px solid {{ tokens.colors.primary | default('#1e3a8a') }}33;
+      margin: 0 auto 1.8rem auto;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.4rem;
+    ">✦</div>
 
     <!-- Main title -->
     <h1 style="
@@ -28,8 +43,9 @@
       font-size: {{ tokens.typography.h1_size | default('2.4rem') }};
       font-weight: 700;
       color: {{ tokens.colors.primary | default('#1e3a8a') }};
-      line-height: 1.2;
-      margin-bottom: 1.5rem;
+      line-height: 1.15;
+      margin-bottom: 1.2rem;
+      letter-spacing: -0.02em;
     ">{{ title | default('Title') }}</h1>
 
     <!-- Subtitle / authors / venue -->
@@ -39,12 +55,13 @@
       font-size: {{ tokens.typography.body_size | default('1.1rem') }};
       color: {{ tokens.colors.muted | default('#6b7280') }};
       margin-bottom: 0.5rem;
+      line-height: 1.5;
     ">{{ subtitle }}</p>
     {% endif %}
 
-    <!-- Extra bullets for venue/date if provided -->
+    <!-- Extra lines for venue/date if provided -->
     {% if bullets %}
-    <div style="margin-top: 1.5rem;">
+    <div style="margin-top: 1rem;">
       {% for item in bullets %}
       <p style="
         font-size: {{ tokens.typography.body_size | default('1rem') }};
@@ -55,13 +72,25 @@
     </div>
     {% endif %}
 
-    <!-- Bottom accent -->
+    <!-- Optional key metric callout (injected via custom_html) -->
+    {% if custom_html %}
+    <div style="margin-top: 1.8rem;">
+      {{ custom_html }}
+    </div>
+    {% endif %}
+
+    <!-- Bottom decorative element -->
     <div style="
-      width: 40px; height: 3px;
-      background: {{ tokens.colors.secondary | default('#3b82f6') }};
-      margin: 2.5rem auto 0 auto;
-      border-radius: 3px;
-    "></div>
+      margin-top: 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.8rem;
+    ">
+      <div style="width: 40px; height: 2px; background: {{ tokens.colors.primary | default('#1e3a8a') }}44; border-radius: 1px;"></div>
+      <div style="width: 8px; height: 8px; border-radius: 50%; background: {{ tokens.colors.secondary | default('#3b82f6') }};"></div>
+      <div style="width: 40px; height: 2px; background: {{ tokens.colors.primary | default('#1e3a8a') }}44; border-radius: 1px;"></div>
+    </div>
 
   </div>
 

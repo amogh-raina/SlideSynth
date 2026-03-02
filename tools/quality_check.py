@@ -55,17 +55,28 @@ def quality_check(slide_paths: List[str]) -> str:
         if 'class="notes"' not in html and "class='notes'" not in html:
             issues.append({"severity": "warn", "message": "No speaker notes found"})
 
-        # Word count check
-        text_only = re.sub(r"<[^>]+>", " ", html)
+        # ── Word count: strip style blocks and inline styles first ──
+        text_clean = html
+        # Remove <style>...</style> blocks
+        text_clean = re.sub(r'<style[^>]*>.*?</style>', ' ', text_clean, flags=re.S | re.I)
+        # Remove inline style="..." attributes (they're CSS, not content)
+        text_clean = re.sub(r'\sstyle="[^"]*"', ' ', text_clean)
+        text_clean = re.sub(r"\sstyle='[^']*'", ' ', text_clean)
+        # Strip remaining tags
+        text_only = re.sub(r"<[^>]+>", " ", text_clean)
+        # Collapse whitespace and count
         word_count = len(text_only.split())
-        if word_count > 400:
+        # Threshold raised to 250 (visible content words only, CSS stripped)
+        if word_count > 250:
             issues.append({"severity": "warn", "message": f"High word count: {word_count} words"})
 
-        # Image existence check
+        # Image existence check — only check relative paths from slides dir
         for img_match in re.finditer(r'src=["\']([^"\']+)["\']', html):
             src = img_match.group(1)
-            if src.startswith("/") or src.startswith("./"):
-                img_path = resolve_vpath(src)
+            # Only check non-CDN relative paths
+            if not src.startswith(("http", "data:", "//")) and not src.startswith("/"):
+                # Relative to the slide file's directory
+                img_path = path.parent / src
                 if not img_path.exists():
                     issues.append({"severity": "warn", "message": f"Referenced image not found: {src}"})
 

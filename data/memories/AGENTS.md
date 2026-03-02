@@ -4,8 +4,15 @@
 - Output directory layout: /docs/, /design/, /slides/, /images/, /tables/
 - Slide files are named slide01.html … slideNN.html (zero-padded to 2 digits)
 - Design tokens live at /design/design_tokens.json
-- Content analysis lives at /docs/content_analysis.md
-- Slide outline lives at /docs/slide_outline.json
+- Slide outline (with metadata and narrative briefs) lives at /docs/slide_outline.json
+
+## Pipeline Output Files
+- /docs/document.md          — parsed paper Markdown (from parse_pdf)
+- /docs/assets_manifest.json — figure/table index
+- /docs/slide_outline.json   — research agent output (metadata + per-slide briefs)
+- /design/design_tokens.json — design agent output (Mode B)
+- /slides/slide{N:02d}.html  — individual slides (from generator agent)
+- /presentation.html         — combined Reveal.js deck (from combine_presentation)
 
 ## Presentation Style Preferences
 - Prefer visually rich slides over text-heavy bullet lists

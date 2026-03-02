@@ -134,19 +134,20 @@ This is natural intent detection by the LLM, not hardcoded triggers. Once the or
 
 2. **Research & Plan** — Delegate to the `research` subagent to produce
    /docs/slide_outline.json. If you gathered context from the user (role,
-   audience, emphasis, time constraints, speaker script suggestion, design suggestions), include it in the task instructions
-   so the research agent can tailor the narrative arc and content selection.
-   >>> PAUSE: Read /docs/slide_outline.json and present a BRIEF summary:
-       - Paper title and authors
-       - Central message
-       - Narrative arc chosen
-       - Total slide count with section breakdown (hook/explain/prove/inspire)
-       - Slide-by-slide overview (number, title, template)
-       - Asset decisions summary (USE_AS_IS / TRANSFORM / DESCRIBE / SKIP counts)
-       - Top metric card candidates from key_numbers
-   Keep this summary concise and scannable. Tell the user:
-   "Here's the proposed slide outline. Would you like to approve it, modify
-   any slides, or adjust the structure?"
+   audience, emphasis, time constraints), include it in the task instructions.
+   IMPORTANT: Tell the research agent to focus ONLY on key sections when reading:
+   "Read /docs/document.md. Focus on: Abstract, Introduction,  
+   section headings, Methodology/Experiments section, Results section, and Conclusion. Skim the rest."
+   
+   >>> PAUSE: The research agent's response will contain the outline summary. 
+   Use that response directly for the Pause — do NOT re-read the file yourself. 
+   Present the summary in a scannable way and end with structured options:
+   
+   "Here's the proposed outline. Reply with one of:
+   - **approve** — proceed to design
+   - **fewer slides** — reduce to 10-12 slides  
+   - **more results** — add more evidence slides
+   - **custom** — describe what you want changed"
    WAIT for user response before continuing.
 
 3. **Design** — Delegate to the `design` subagent to produce 3 design options based on the slide outline, and if the user had provided any design suggestions, include them in the task instructions.
@@ -165,8 +166,8 @@ This is natural intent detection by the LLM, not hardcoded triggers. Once the or
    /design/design_tokens.json based on their choice.
 
 4. **Generate** — Delegate to the `generator` subagent to produce all slide
-   HTML files. The generator processes slides in batches of 5, running
-   quality_check after each batch. Report batch progress to the user.
+   HTML files. The generator should run in batches of 5. Do NOT call quality_check 
+   between batches. Generate ALL slides in order. Report overall progress to the user.
 
 5. **QA Scan** — After generation, call `quality_check` on all generated
    slide files yourself. Review the results and note any issues in a brief
@@ -801,8 +802,9 @@ For every slide in slide_outline.json, read these fields IN ORDER:
 
 ## Step 2: Asset Assessment (for USE_AS_IS images)
 
-If `asset_decision` is USE_AS_IS, resolve the image via copy_asset_to_slide,
-then make ONE brief compositional assessment:
+Use `batch_resolve_assets` ONCE at the start of generation to copy all assets 
+and get their local paths. Then, for each slide using an asset, make ONE 
+brief compositional assessment:
 
 | Image type | Template decision | Text density |
 |---|---|---|
@@ -875,8 +877,20 @@ The title should dominate the top ~20% of the slide.
 ## Step 6: Generate HTML
 
 Call `generate_slide_html` with the appropriate content JSON.
-After every 5 slides, call `quality_check` on the batch.
-Fix any FAIL issues immediately before proceeding.
+Generate ALL slides in order. Do NOT call `quality_check` between batches.
+
+## Final Quality Gate
+
+After ALL slides are generated, do a FINAL CONTENT AUDIT:
+
+For each slide, check:
+1. Title length: if the title exceeds 15 words → rewrite to 12 words max
+2. Bullet density: if > 5 bullets → cut to 4, move excess to speaker_notes
+3. Custom HTML depth: if custom_html has more than 4 metric cards → reduce to 3
+4. Conclude with a single call to `quality_check` on all slide paths.
+
+If you regenerated any slides during this pass, report them in your output summary.
+Fix only FAIL issues. WARN issues are acceptable.
 
 ## Step 7: Consecutive Template Check
 

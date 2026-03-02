@@ -4,7 +4,7 @@
     <AppSidebar
       :sidebar-width="sidebarWidth"
       :collapsed="sidebarCollapsed"
-      @new-project="triggerFileInput"
+      @new-project="startNewProject"
       @switch-project="switchToProject"
       @toggle-collapse="sidebarCollapsed = !sidebarCollapsed"
     />
@@ -86,6 +86,13 @@ function ensureConnected() {
     if (!store.threadId) store.threadId = uuid()
     ws.connect(store.threadId)
   }
+}
+
+function startNewProject() {
+  store.threadId = null
+  store.resetChat()
+  // Ensure we switch off active states in projects
+  store.projects.forEach(p => p.active = false)
 }
 
 function onSend(text) {

@@ -104,6 +104,37 @@ def copy_asset_to_slide(
 
 
 @tool
+def batch_resolve_assets(
+    asset_ids: list[str],
+    slide_assignments: str,  # JSON mapping {"fig_1": 3, "table_1": 5}
+    manifest_path: str = "/docs/assets_manifest.json",
+) -> str:
+    """Copy multiple assets to their target slides in one call.
+    
+    Args:
+        asset_ids: List of asset IDs to resolve.
+        slide_assignments: JSON mapping asset_id -> slide_number.
+        manifest_path: Path to assets manifest.
+    
+    Returns:
+        JSON mapping asset_id -> relative_path for use in HTML src attributes.
+    """
+    assignments = json.loads(slide_assignments)
+    results = {}
+    for asset_id in asset_ids:
+        slide_num = assignments.get(asset_id, 1)
+        # We manually call the inner logic of copy_asset_to_slide to avoid
+        # tool wrapping complications
+        path = copy_asset_to_slide.invoke({
+            "asset_id": asset_id,
+            "slide_number": slide_num,
+            "manifest_path": manifest_path,
+        })
+        results[asset_id] = path
+    return json.dumps(results)
+
+
+@tool
 def list_assets(
     manifest_path: str = "/docs/assets_manifest.json",
     asset_type: str = "all",

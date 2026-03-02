@@ -17,6 +17,8 @@
     font-weight: 700;
     color: {{ tokens.colors.primary | default('#1e3a8a') }};
     margin-bottom: 1.5rem;
+    flex-shrink: 0;
+    max-height: 2.5em;
     border-bottom: 3px solid {{ tokens.colors.primary | default('#1e3a8a') }};
     padding-bottom: 0.5rem;
   ">{{ title | default('') }}</h2>
@@ -62,6 +64,8 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
+    overflow: hidden;
+    max-height: 520px;
     {% if bullets %}margin-top: 1rem;{% endif %}
   ">
     {{ custom_html }}

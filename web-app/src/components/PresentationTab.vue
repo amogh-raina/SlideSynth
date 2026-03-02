@@ -28,6 +28,17 @@
         </svg>
         Play Slides
       </button>
+      <button
+        v-if="store.slideCount > 0"
+        class="ml-2 px-3.5 py-1.5 bg-accent text-white border-none rounded-md text-xs font-medium
+               flex items-center gap-1.5 hover:bg-blue-700 transition-colors cursor-pointer"
+        @click="requestExport"
+      >
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+        </svg>
+        Export PDF
+      </button>
     </div>
 
     <!-- Grid view -->
@@ -123,9 +134,15 @@
 import { ref, watch } from 'vue'
 import { useAppStore } from '@/stores/app'
 import { useApi } from '@/composables/useApi'
+import { useWebSocket } from '@/composables/useWebSocket'
 
 const store = useAppStore()
 const api = useApi()
+const ws = useWebSocket()
+
+function requestExport() {
+  ws.sendChat("Please export the presentation to PDF.")
+}
 
 /* ── Speaker notes ─────────────────────────────── */
 const notes = ref({})           // { 1: "…", 2: "…" }

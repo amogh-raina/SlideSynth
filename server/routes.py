@@ -11,7 +11,7 @@ import uuid
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, UploadFile
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from pydantic import BaseModel
 
 router = APIRouter()
@@ -135,7 +135,8 @@ async def get_project_file(thread_id: str, file_path: str):
     summary="Serve the combined Reveal.js presentation",
 )
 async def get_presentation(thread_id: str):
-    """Return the final presentation.html for a project."""
+    """Return presentation.html with a base tag so all relative asset
+    paths resolve through the file-serving endpoint."""
     project_dir = _project_dir(thread_id)
     presentation = project_dir / "presentation.html"
     if not presentation.exists():
@@ -143,7 +144,13 @@ async def get_presentation(thread_id: str):
             status_code=404,
             detail="Presentation not generated yet. Run the full pipeline first.",
         )
-    return FileResponse(str(presentation), media_type="text/html")
+    html = presentation.read_text(encoding="utf-8")
+    # Inject <base> so browser resolves relative paths via the files API.
+    # presentation.html references images as "slides/assets/..." so the
+    # base points one level up: /api/projects/{id}/files/
+    base_tag = f'<base href="/api/projects/{thread_id}/files/">'
+    html = html.replace("<head>", f"<head>\n  {base_tag}", 1)
+    return HTMLResponse(content=html)
 
 
 @router.delete("/projects/{thread_id}", summary="Delete a project")

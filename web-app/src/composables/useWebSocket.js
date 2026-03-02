@@ -132,6 +132,8 @@ export function useWebSocket() {
     send({ type: 'stop' })
     store.status = 'Stopping…'
     store.processStatus = 'Stopping…'
+    store.processRunning = false
+    store.addMessage('assistant', '⏹ Generation stopped.', 'SlideSynth')
   }
 
   return {
